@@ -1,0 +1,118 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+```{r}
+Data <- read.csv(file="happylivingdata_allvalid.csv", header=FALSE, encoding = "big5", sep=",")
+Data
+```
+```{r}
+# dim(Data)
+empty <- 0
+repeated <- 0
+IsBad <- c(1:68324)
+IsSingleAnswer <- c(1:68324)
+RowVar <- function(x) {
+  rowSums((x - rowMeans(x))^2)/(dim(x)[2] - 1)
+}
+for(i in c(2:68324)) {
+  yo <- Data[i, ][5:42]
+
+  if(length(yo[yo != ""]) == 0)
+  {
+    a <- 2
+    empty <- empty + 1
+  }
+  else
+  {
+    a <- var(yo[yo != ""])
+  }
+  if(a == 0 || a == 2)
+  {
+    IsBad[i - 1] <- 1
+    IsSingleAnswer[i - 1] <- 1
+    repeated <- repeated + 1
+    if(a == 2){
+      IsSingleAnswer[i - 1] <- -1
+    }
+  }
+  else{
+    IsBad[i - 1] = 0
+    IsSingleAnswer[i - 1] <- 0
+  }
+}
+repeated <- repeated - empty
+print(empty)
+print(repeated)
+```
+
+```{r}
+language <- Data$V1[2:30002]
+sec <- as.numeric(Data$V2[2:30002])
+gender <- Data$V3[2:30002]
+age <- as.numeric(Data$V4[2:30002])
+ageSQ <- age ^ 2
+secSQ <- sec ^ 2
+fit <- glm(IsBad[2:30002] ~ language + sec + gender + ageSQ + age, family = "binomial")
+fit2 <- glm(IsBad[2:30002] ~ sec + ageSQ + age, family = "binomial")
+summary(fit)
+summary(fit2)
+library(lmtest)
+anova(fit, fit2)
+```
+```{r}
+language <- Data$V1[IsSingleAnswer != -1][1:10000]
+sec <- as.numeric(Data$V2[IsSingleAnswer != -1])[1:10000]
+gender <- Data$V3[IsSingleAnswer != -1][1:10000]
+age <- as.numeric(Data$V4[IsSingleAnswer != -1])[1:10000]
+ageSQ <- age ^ 2
+secSQ <- sec ^ 2
+fit3 <- glm(IsSingleAnswer[IsSingleAnswer != -1][1:10000] ~ language + sec + gender + ageSQ + age, family = "binomial")
+fit4 <- glm(IsSingleAnswer[IsSingleAnswer != -1][1:10000] ~ sec + ageSQ + age, family = "binomial")
+summary(fit)
+summary(fit2)
+library(lmtest)
+anova(fit, fit2)
+```
+
+```{r}
+# Simple Pie Chart
+slices <- c(68324 - empty - repeated, empty, repeated)
+lbls <- c("Normal", "Empty", "Single Answer")
+pct <- round(slices/sum(slices)*100)
+lbls <- paste(lbls, pct) # add percents to labels 
+lbls <- paste(lbls,"%",sep="") # ad % to labels 
+pie(slices, labels = lbls, main="Pie Chart of Result")
+
+```
+
+```{r}
+sq = seq(0:100)
+resp100 <- predict(fit2, type="response", newdata=data.frame(age=sq, sec = 800, ageSQ = sq ^ 2 ))
+resp80 <- predict(fit2, type="response", newdata=data.frame(age=sq, sec = 400, ageSQ = sq ^ 2 ))
+resp60 <- predict(fit2, type="response", newdata=data.frame(age=sq, sec = 0, ageSQ = sq ^ 2 ))
+png("Model2.png", width = 600, height = 400)
+plot(resp100, type = 'l', col = 4, ylab="Predicted Probability",  
+	xlab="Age (years)", main="Model2 Prediction", cex=1.2)
+legend(50,0.9, legend=c("sec = 800", "sec = 400", "sec = 0"), col=c(4,2,3), lty=1:1, cex=2)
+lines(resp80, col=2)
+lines(resp60, col=3)
+# text(x=40, y=0.4, "Females", adj=c(0,0))
+# text(x=60, y=0.2, "Males", adj=c(0,0))
+```
+
+```{r}
+sq = seq(0:100)
+resp100 <- predict(fit4, type="response", newdata=data.frame(age=sq, sec = 800, ageSQ = sq ^ 2 ))
+resp80 <- predict(fit4, type="response", newdata=data.frame(age=sq, sec = 400, ageSQ = sq ^ 2 ))
+resp60 <- predict(fit4, type="response", newdata=data.frame(age=sq, sec = 0, ageSQ = sq ^ 2 ))
+png("Model4.png", width = 600, height = 400)
+plot(resp100, type = 'l', col = 4, ylab="Predicted Probability",  
+	xlab="Age (years)", main="Model4 Prediction", cex=1.2)
+legend(50,0.9, legend=c("sec = 800", "sec = 400", "sec = 0"), col=c(4,2,3), lty=1:1, cex=2)
+lines(resp80, col=2)
+lines(resp60, col=3)
+# text(x=40, y=0.4, "Females", adj=c(0,0))
+# text(x=60, y=0.2, "Males", adj=c(0,0))
+```
+
